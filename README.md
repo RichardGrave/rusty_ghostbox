@@ -1,2 +1,3 @@
-# rusty_ghostbox
-A ghostbox/spiritbox.
+# Ghostbox
+## A command line Ghostbox/Spiritbox created with Rust
+
