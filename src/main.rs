@@ -21,7 +21,8 @@ fn main() {
     print_at_pos_zero("Loading file...");
 
     // let words_file = File::open("src/english_words_alpha.txt").expect("opening file");
-    let words_file = File::open("src/english_words.txt").expect("opening file");
+    // let words_file = File::open("src/english_words.txt").expect("opening file");
+    let words_file = File::open("src/nederlands3.txt").expect("opening file");
     let file_reader = BufReader::new(&words_file);
 
     let word_vector: Vec<String> = file_reader.lines().map(|line| line.unwrap()).collect();
