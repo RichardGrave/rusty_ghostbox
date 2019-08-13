@@ -1,1 +1,1 @@
-/Users/richardgrave/Programming/Rust/ghostbox/target/debug/ghostbox.dSYM: /Users/richardgrave/Programming/Rust/ghostbox/src/main.rs
+/Users/richardgrave/Programming/Rust/rusty_ghostbox/target/debug/ghostbox.dSYM: /Users/richardgrave/Programming/Rust/rusty_ghostbox/src/main.rs
