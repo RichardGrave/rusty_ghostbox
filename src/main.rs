@@ -16,6 +16,7 @@ fn main() {
     println!("Number of words: {}", word_vector.len());
 
     loop {
+        //TODO:RG do more
         check_on_chance(&word_vector);
         // check_on_word_range(&word_vector);
     }
