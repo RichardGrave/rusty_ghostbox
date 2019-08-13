@@ -11,6 +11,8 @@ const CHANCE_RANGE: u32 = 101;
 const SLEEP_DURATION: time::Duration = time::Duration::from_millis(250);
 const QUIT: char = 'q';
 
+//TODO:RG global variables
+
 fn main() {
     //At start, clear the terminal
     clear_term();
