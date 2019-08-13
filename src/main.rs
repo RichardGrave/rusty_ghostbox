@@ -4,7 +4,7 @@ use crossterm::{cursor, input, terminal, ClearType, InputEvent, KeyEvent, RawScr
 use rand::Rng;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-use std::sync::{Arc, Mutex};
+// use std::sync::{Arc, Mutex};
 use std::{thread, time};
 
 const CHANCE_RANGE: u32 = 101;
@@ -12,6 +12,8 @@ const SLEEP_DURATION: time::Duration = time::Duration::from_millis(250);
 const QUIT: char = 'q';
 
 //TODO:RG global variables
+
+//TODO:RG after quiting we need to get control back for the Terminal
 
 fn main() {
     //At start, clear the terminal
@@ -29,24 +31,21 @@ fn main() {
     print_at_pos_zero("File loaded.");
     print_at_pos_zero(&format!("Number of English words: {}", word_vector.len()));
 
-    let key_press = Arc::new(Mutex::new(' '));
-    let key_press_clone = key_press.clone();
+    //TODO:RG later
+    // let key_press = Arc::new(Mutex::new(' '));
+    // let key_press_clone = key_press.clone();
 
     thread::spawn(move || {
-        key_listener(&key_press_clone);
+        key_listener();
     });
 
     //TODO:RG do more
-    check_on_chance(&word_vector, &key_press);
+    check_on_chance(&word_vector);
 }
 
 #[allow(dead_code)]
-fn check_on_chance(word_vector: &Vec<String>, key_press: &Arc<Mutex<char>>) {
+fn check_on_chance(word_vector: &Vec<String>) {
     loop {
-        //End loop if we pressed 'q' (quit)
-        if *key_press.lock().unwrap() == QUIT {
-            break;
-        }
         //Give time to fetch word
         thread::sleep(SLEEP_DURATION);
         let word_on_line = rand::thread_rng().gen_range(0, word_vector.len());
@@ -64,7 +63,8 @@ fn check_on_chance(word_vector: &Vec<String>, key_press: &Arc<Mutex<char>>) {
     }
 }
 
-fn key_listener(key_press_clone: &Arc<Mutex<char>>) {
+//TODO:RG build a use for: key_press_clone: &Arc<Mutex<char>>
+fn key_listener() {
     // make sure to enable raw mode, this will make sure key events won't be handled by the terminal it's self
     // and allows crossterm to read the input and pass it back to you.
     if let Ok(_raw) = RawScreen::into_raw_mode() {
@@ -77,19 +77,20 @@ fn key_listener(key_press_clone: &Arc<Mutex<char>>) {
 
         loop {
             if let Some(key_event) = stdin.next() {
-                process_input_event(key_event, key_press_clone);
+                process_input_event(key_event);
 
                 //End loop if we pressed 'q' (quit)
-                if *key_press_clone.lock().unwrap() == QUIT {
-                    break;
-                }
+                // if *key_press_clone.lock().unwrap() == QUIT {
+                //     break;
+                // }
             }
             thread::sleep(time::Duration::from_millis(50));
         }
     }
 }
 
-fn process_input_event(key_event: InputEvent, key_press_clone: &Arc<Mutex<char>>) {
+//TODO:RG build a use for: key_press_clone: &Arc<Mutex<char>>
+fn process_input_event(key_event: InputEvent) {
     //TODO:RG do key_events to increase/lower the chance or the speed
     match key_event {
         InputEvent::Keyboard(event) => {
@@ -97,8 +98,15 @@ fn process_input_event(key_event: InputEvent, key_press_clone: &Arc<Mutex<char>>
                 KeyEvent::Char(c) => match c {
                     QUIT => {
                         print_at_pos_zero("Quiting the program");
-                        // Clear all lines in terminal;
-                        *key_press_clone.lock().unwrap() = QUIT;
+
+                        // disable mouse events to be captured.
+                        if let Ok(_raw) = RawScreen::disable_raw_mode() {
+                            let input = input();
+                            input
+                                .disable_mouse_mode()
+                                .expect("Tried to disable mouse mode");
+                        }
+                        terminal().exit();
                     }
                     _ => {
                         print_at_pos_zero(&format!("'{}' pressed", c));
