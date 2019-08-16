@@ -7,6 +7,11 @@ pub struct Window {
     pub end_column: u16,
 }
 
+pub struct CursorPosition {
+    pub column: u16,
+    pub row: u16,
+}
+
 const UPPER_LEFT_CORNER: char = '╔';
 const LOWER_LEFT_CORNER: char = '╚';
 const UPPER_RIGHT_CORNER: char = '╗';
@@ -22,6 +27,10 @@ impl Window {
 
         Self::create_up_down(self.begin_row, self.begin_column + 1, self.end_column);
         Self::create_up_down(self.end_row, self.begin_column + 1, self.end_column);
+    }
+
+    pub fn get_writing_positon(&self) -> CursorPosition {
+        CursorPosition {column: self.begin_column + 2, row: self.begin_row + 2 }
     }
 
     fn create_corners(&self) {
@@ -59,7 +68,3 @@ impl Window {
         }
     }
 }
-
-// fn create_borders(start_x: u16, start_y: u16, end_x: u16, end_y: u16){
-//         .expect("tried to goto start of the line");
-// }
