@@ -24,7 +24,8 @@ After that it check if both numbers are equal.\
 If they are equal then a word is found.
 
 ## How it looks
-It's a terminal application.
+It's a terminal application and it will use your terminal colors.\
+The colors in the image are custom colors from my terminal.
 ![Screenshot](RustyGhostBoxTerminal.png)
 
 ## What can you do with it?
