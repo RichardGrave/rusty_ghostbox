@@ -1,46 +1,39 @@
 extern crate crossterm;
+extern crate chrono;
 
 mod found_word;
+mod options;
 mod window;
 
 use crossterm::{cursor, input, terminal, ClearType, InputEvent, KeyEvent, RawScreen};
 use found_word::Word;
+use options::Options;
 use rand::Rng;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::sync::{Arc, Mutex};
-use std::{thread, time};
+use std::thread;
+use std::time::Duration;
+use chrono::Local;
 use window::Window;
 
-const QUIT: char = 'q';
-const INCREASE_CHANCE: char = 'i';
-const DECREASE_CHANCE: char = 'd';
-const WORD_SLEEP: char = 'w';
-const RANDOM_ONE_SLEEP: char = '1';
-const RANDOM_TWO_SLEEP: char = '2';
+const INCREASE_CHANCE: char = 'a';
+const DECREASE_CHANCE: char = 's';
+const INCREASE_WORD_SLEEP: char = 'w';
+const DECREASE_WORD_SLEEP: char = 'e';
+const INCREASE_RANDOM_ONE_SLEEP: char = '1';
+const DECREASE_RANDOM_ONE_SLEEP: char = '2';
+const INCREASE_RANDOM_TWO_SLEEP: char = '3';
+const DECREASE_RANDOM_TWO_SLEEP: char = '4';
 const RESET_OPTIONS: char = 'r';
+const QUIT: char = 'q';
 
-const DEFAULT_SLEEP_DURATION: time::Duration = time::Duration::from_millis(250);
-const DEFAULT_CHANGE_RANGE: u16 = 100;
+const LOWEST_RANGE: u16 = 10;
+const RANGE_STEPS: u16 = 10;
+const LOWEST_SLEEP: u64 = 50;
+const SLEEP_STEPS: u64 = 50;
 const WORDS_TO_TAKE: u16 = 45;
 const FILE_NAME: &str = "src/english_words.txt";
-
-static OPTIONS_LIST: [&'static str; 7] = [
-    "i: increase chance to find word",
-    "d: decrease chance to find word",
-    "w: give more time to search for word",
-    "1: give more time to search for random num 1",
-    "2: give more time to search for random num 2",
-    "r: reset options",
-    "q: quit the program",
-];
-
-static INFO_LIST: [&'static str; 4] = [
-    "Random numbers between: 0 and ",
-    "word search time: ",
-    "Random number 1 search time: ",
-    "Random number 2 search time: ",
-];
 
 const OPTIONS_WINDOW: Window = Window {
     begin_row: 0u16,
@@ -60,24 +53,6 @@ const INFO_WINDOW: Window = Window {
     end_row: OPTIONS_WINDOW.end_row + 20,
     end_column: OPTIONS_WINDOW.end_column,
 };
-
-struct Options {
-    chance_range: u16,
-    word_sleep: time::Duration,
-    random_one_sleep: time::Duration,
-    random_two_sleep: time::Duration,
-}
-
-impl Default for Options {
-    fn default() -> Self {
-        Options {
-            chance_range: DEFAULT_CHANGE_RANGE,
-            word_sleep: DEFAULT_SLEEP_DURATION,
-            random_one_sleep: DEFAULT_SLEEP_DURATION,
-            random_two_sleep: DEFAULT_SLEEP_DURATION,
-        }
-    }
-}
 
 //TODO:RG global variables?
 //TODO:RG after quiting we need to get control back for the Terminal
@@ -102,8 +77,45 @@ fn main() {
         key_listener(&key_press_clone);
     });
 
-    //TODO:RG do more
-    check_on_chance(&key_press, &word_vector);
+    //go find words
+    get_words_by_chance(&key_press, &word_vector);
+}
+
+fn create_options_array() -> Vec<String> {
+    //Need to create Vec<String> here, apparently it can't be a static global
+
+    //!! Auto format isn't that great in here
+    let mut option_list = Vec::<String>::new();
+    option_list.push(format!("{}: increase chance to find word", INCREASE_CHANCE));
+    option_list.push(format!("{}: decrease chance to find word", DECREASE_CHANCE));
+    option_list.push(format!(
+        "{}: increase time to search for word",
+        INCREASE_WORD_SLEEP
+    ));
+    option_list.push(format!(
+        "{}: decrease time to search for word",
+        DECREASE_WORD_SLEEP
+    ));
+    option_list.push(format!(
+        "{}: increase time to search for random num 1",
+        INCREASE_RANDOM_ONE_SLEEP
+    ));
+    option_list.push(format!(
+        "{}: decrease time to search for random num 1",
+        DECREASE_RANDOM_ONE_SLEEP
+    ));
+    option_list.push(format!(
+        "{}: increase time to search for random num 2",
+        INCREASE_RANDOM_TWO_SLEEP
+    ));
+    option_list.push(format!(
+        "{}: decrease time to search for random num 2",
+        DECREASE_RANDOM_TWO_SLEEP
+    ));
+    option_list.push(format!("{}: reset options to default", RESET_OPTIONS));
+    option_list.push(format!("{}: quit the program", QUIT));
+
+    option_list
 }
 
 fn create_options_window(word_vector: &Vec<String>) {
@@ -115,21 +127,34 @@ fn create_options_window(word_vector: &Vec<String>) {
         writing_position.row,
         &format!("Loaded {} English words", word_vector.len()),
     );
-    //+2 because the headers are printed first and we need some space between them
     let mut pos_option = writing_position.row + 2;
-
     print_at_pos(
         writing_position.column,
         pos_option,
         &format!("Use the characters below to change speed and chance to find words"),
     );
+    pos_option += 1;
+    print_at_pos(
+        writing_position.column,
+        pos_option,
+        &format!("You can keep the keys pressed to chance the values"),
+    );
 
-    pos_option = pos_option + 2;
+    pos_option += 2;
+    let mut use_empty_row = false;
 
-    for option in OPTIONS_LIST.iter() {
+    for option in create_options_array().iter() {
         print_at_pos(writing_position.column, pos_option, option);
-        //get a empty row between them
-        pos_option += 1;
+
+        //We use this to group the options
+        if use_empty_row {
+            pos_option += 2;
+            use_empty_row = false;
+        } else {
+            //get a empty row between them
+            pos_option += 1;
+            use_empty_row = true;
+        }
     }
 }
 
@@ -145,15 +170,15 @@ fn create_found_words_window() {
 
 fn create_info_window() {
     INFO_WINDOW.create_window();
-    create_info_list();
+    create_info_list(&Options::default());
 }
 
-fn create_info_list() {
+fn create_info_list(options: &Options) {
     let writing_position = INFO_WINDOW.get_writing_positon();
     //+2 because the headers are printed first and we need some space between them
     let mut pos_option = writing_position.row + 2;
 
-    for option in INFO_LIST.iter() {
+    for option in options.get_all_info().iter() {
         print_at_pos(writing_position.column, pos_option, option);
         //get a empty row between them
         pos_option += 2;
@@ -167,29 +192,13 @@ fn init_word_vec(word_vector: &mut Vec<String>) {
     *word_vector = file_reader.lines().map(|line| line.unwrap()).collect();
 }
 
-fn check_on_chance(key_press_clone: &Arc<Mutex<char>>, word_vector: &Vec<String>) {
+fn get_words_by_chance(key_press_clone: &Arc<Mutex<char>>, word_vector: &Vec<String>) {
     let mut found_words = Vec::<Word>::new();
     let mut options = Options::default();
 
     loop {
-        match *key_press_clone.lock().unwrap() {
-            QUIT => {
-                //End loop if we pressed 'q' (quit)
-                break;
-            }
-            INCREASE_CHANCE => {
-                increase_decrease_chance(&mut options.chance_range, &true);
-            }
-            DECREASE_CHANCE => {
-                increase_decrease_chance(&mut options.chance_range, &false);
-            }
-            WORD_SLEEP => {}
-            RANDOM_ONE_SLEEP => {}
-            RANDOM_TWO_SLEEP => {}
-            RESET_OPTIONS => {
-                options = Options::default();
-            }
-            _ => {}
+        if change_option_values(key_press_clone, &mut options) {
+            break;
         }
 
         //reset key_press
@@ -197,6 +206,7 @@ fn check_on_chance(key_press_clone: &Arc<Mutex<char>>, word_vector: &Vec<String>
 
         //Give time to fetch word
         thread::sleep(options.word_sleep);
+        //use number of words in vector as the range
         let word_on_line = rand::thread_rng().gen_range(0, word_vector.len());
 
         //Give time to set next two ranges on the same number
@@ -210,10 +220,11 @@ fn check_on_chance(key_press_clone: &Arc<Mutex<char>>, word_vector: &Vec<String>
         //If they both generate the same number then show the word on this line
         if first_chance == second_chance {
             let word = Word {
-                time_found: String::from("time_test"),
+                time_found: Local::now().format("%H:%M:%S").to_string(),
                 word: word_vector.get(word_on_line).unwrap().clone(),
-                chance_num_one: String::from("change_one_test"),
-                chance_num_two: String::from("change_two_test"),
+                chance_num_one: first_chance.to_string(),
+                chance_num_two: second_chance.to_string(),
+                chance_range: options.chance_range.to_string(),
             };
             found_words.push(word);
             print_found_words(&found_words);
@@ -221,23 +232,93 @@ fn check_on_chance(key_press_clone: &Arc<Mutex<char>>, word_vector: &Vec<String>
     }
 }
 
-fn increase_decrease_chance(chance: &mut u16, increase: &bool) {
-    if *increase {
+fn change_option_values(key_press_clone: &Arc<Mutex<char>>, options: &mut Options) -> bool {
+    let mut quit_program = false;
+
+    match *key_press_clone.lock().unwrap() {
+        QUIT => {
+            //Inform the loop that we pressed 'q' and quit the program
+            quit_program = true;
+        }
+        INCREASE_CHANCE => {
+            increase_decrease_chance(&mut options.chance_range, true);
+            //change info
+            create_info_list(&options);
+        }
+        DECREASE_CHANCE => {
+            increase_decrease_chance(&mut options.chance_range, false);
+            //change info
+            create_info_list(&options);
+        }
+        INCREASE_WORD_SLEEP => {
+            increase_decrease_sleep(&mut options.word_sleep, true);
+            //change info
+            create_info_list(&options);
+        }
+        DECREASE_WORD_SLEEP => {
+            increase_decrease_sleep(&mut options.word_sleep, false);
+            //change info
+            create_info_list(&options);
+        }
+        INCREASE_RANDOM_ONE_SLEEP => {
+            increase_decrease_sleep(&mut options.random_one_sleep, true);
+            //change info
+            create_info_list(&options);
+        }
+        DECREASE_RANDOM_ONE_SLEEP => {
+            increase_decrease_sleep(&mut options.random_one_sleep, false);
+            //change info
+            create_info_list(&options);
+        }
+        INCREASE_RANDOM_TWO_SLEEP => {
+            increase_decrease_sleep(&mut options.random_two_sleep, true);
+            //change info
+            create_info_list(&options);
+        }
+        DECREASE_RANDOM_TWO_SLEEP => {
+            increase_decrease_sleep(&mut options.random_two_sleep, false);
+            //change info
+            create_info_list(&options);
+        }
+        RESET_OPTIONS => {
+            *options = Options::default();
+            create_info_list(&options);
+        }
+        _ => {}
+    }
+
+    quit_program
+}
+
+fn increase_decrease_sleep(sleep_time: &mut Duration, increase_sleep: bool) {
+    let mut sleep_time_millis = sleep_time.as_millis() as u64;
+
+    if increase_sleep {
+        //increase sleep time
+        sleep_time_millis += SLEEP_STEPS;
+
+        *sleep_time = Duration::from_millis(sleep_time_millis);
+    } else {
         //increase. The random numbers have to be lower so you'll get the same number faster
-        if chance != &10u16 {
-            *chance -= 10;
-        } else {
-            //never lowen than 2 or we don't have a chance anymore, but constantly the same random numbers
-            *chance = 2;
+        if sleep_time_millis != LOWEST_SLEEP {
+            sleep_time_millis -= SLEEP_STEPS;
+
+            *sleep_time = Duration::from_millis(sleep_time_millis);
+        }
+    }
+}
+
+fn increase_decrease_chance(chance: &mut u16, increase_chance: bool) {
+    if increase_chance {
+        //increase chance to find word.
+        //The random numbers have to be lower so you'll get the same number faster
+        if *chance != LOWEST_RANGE {
+            *chance -= RANGE_STEPS;
         }
     } else {
-        //decrease. The random numbers have to be higher so it's less likely they match
-        if chance != &1u16 {
-            *chance += 10;
-        } else {
-            //if we have 2 then make it 10
-            *chance = 10;
-        }
+        //decrease chance to find word.
+        //The random numbers have to be higher so it's less likely they match
+        *chance += RANGE_STEPS;
     }
 }
 
@@ -280,7 +361,7 @@ fn key_listener(key_press_clone: &Arc<Mutex<char>>) {
                     break;
                 }
             }
-            thread::sleep(time::Duration::from_millis(10));
+            thread::sleep(Duration::from_millis(10));
         }
     }
 }
@@ -302,9 +383,7 @@ fn process_input_event(key_press_clone: &Arc<Mutex<char>>, key_event: &InputEven
                                 .disable_mouse_mode()
                                 .expect("Tried to disable mouse mode");
                         }
-                        //Disabled terminal().exit() because it sometimes causes panics.
-                        //Maybe because of the thread??
-                        // clear_term();
+                        clear_term();
                         terminal().exit();
                     }
                     //ignore the rest

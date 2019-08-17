@@ -5,14 +5,15 @@ pub struct Word {
     pub word: String,
     pub chance_num_one: String,
     pub chance_num_two: String,
+    pub chance_range: String,
 }
 
 impl Word {
     pub fn create_header() -> String {
         format!(
             //Apparently we can't use constants????
-            "{:15}{:20}{:20}{:20}",
-            "Time", "Word", "Random 1", "Random 2"
+            "{:10}{:25}{:10}{:10}{:20}",
+            "Time", "Word", "Random 1", "Random 2", "Chance range"
         )
     }
 }
@@ -22,8 +23,8 @@ impl fmt::Display for Word {
         write!(
             f,
             //Apparently we can't use constants????
-            "{:15}{:20}{:20}{:20}",
-            self.time_found, self.word, self.chance_num_one, self.chance_num_two
+            "{:10}{:25}{:10}{:10}{:20}",
+            self.time_found, self.word, self.chance_num_one, self.chance_num_two, self.chance_range
         )
     }
 }
