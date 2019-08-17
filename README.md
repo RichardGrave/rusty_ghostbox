@@ -1,8 +1,9 @@
-# Disclaimer: This is just for fun and **not** a real ghostbox.
+# Disclaimer: This is just for fun and **not** a real Ovilus/Ghostbox.
 
-## Ghostbox/[Ovilus](https://rationalwiki.org/wiki/Ovilus)
+## [Ovilus](https://rationalwiki.org/wiki/Ovilus)/Ghostbox/Spiritbox
 I am learning the Rust programming language and needed a project to do.\
-I enjoy watching the [Ghost Adventures](https://en.wikipedia.org/wiki/Ghost_Adventures). So, I thought it would be fun to make an Ovilus.
+I enjoy watching the [Ghost Adventures](https://en.wikipedia.org/wiki/Ghost_Adventures). So, I thought it would be fun to make an Ovilus.\
+An Ovilus uses a word database and **not** sounds.
 
 ## Code
 I'm still learning Rust so there can be a lot of inefficient code.\
