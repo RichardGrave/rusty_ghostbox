@@ -5,7 +5,7 @@ I am learning the Rust programming language and needed a project to do.\
 I enjoy watching the [Ghost Adventures](https://en.wikipedia.org/wiki/Ghost_Adventures). So, I thought it would be fun to make an Ovilus.
 
 ## Code
-I'm still learning Rust so there might be a lot of inefficient code.\
+I'm still learning Rust so there can be a lot of inefficient code.\
 Or maybe that I should use other methods/crates etc.
 I still need to write test for the code and I need to add better comments/documentation.\
 My **first priority** was to get better with Rust.
