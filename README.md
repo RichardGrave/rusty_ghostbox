@@ -2,7 +2,7 @@
 
 ## Ghostbox/[Ovilus](https://rationalwiki.org/wiki/Ovilus)
 I am learning the Rust programming language and needed a project to do.\
-I enjoy watching the GhostAdventures. So, I thought it would be fun to make an Ovilus.
+I enjoy watching the [Ghost Adventures](https://en.wikipedia.org/wiki/Ghost_Adventures). So, I thought it would be fun to make an Ovilus.
 
 ## Code
 I'm still learning Rust so there might be a lot of inefficient code.\
