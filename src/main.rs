@@ -223,6 +223,8 @@ fn get_words_by_chance(key_press_clone: &Arc<Mutex<char>>, word_vector: &Vec<Str
     }
 }
 
+//TODO:RG should not be done here. The more sleep time the longer it takes to adjust the values
+
 fn change_option_values(key_press_clone: &Arc<Mutex<char>>, options: &mut Options) -> bool {
     let mut quit_program = false;
 
