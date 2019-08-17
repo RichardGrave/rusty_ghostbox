@@ -3,7 +3,8 @@
 ## [Ovilus](https://rationalwiki.org/wiki/Ovilus)/Ghostbox/Spiritbox
 I am learning the Rust programming language and needed a project to do.\
 I enjoy watching the [Ghost Adventures](https://en.wikipedia.org/wiki/Ghost_Adventures). So, I thought it would be fun to make an Ovilus.\
-An Ovilus uses a word database and **not** sounds.
+An Ovilus uses a word database and **not** recorded voices or sounds.
+The Ovilus itself speaks the chosen words.
 
 ## Code
 I'm still learning Rust so there can be a lot of inefficient code.\
