@@ -1,6 +1,6 @@
 # Disclaimer: This is just for fun and **not** a real ghostbox.
 
-## Ghostbox/Ovilus
+## Ghostbox/[Ovilus](https://rationalwiki.org/wiki/Ovilus)
 I am learning the Rust programming language and needed a project to do.\
 I enjoy watching the GhostAdventures. So, I thought it would be fun to make an Ovilus.
 
