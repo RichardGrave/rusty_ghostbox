@@ -6,7 +6,7 @@ I enjoy watching the [Ghost Adventures](https://en.wikipedia.org/wiki/Ghost_Adve
 
 ## Code
 I'm still learning Rust so there can be a lot of inefficient code.\
-Or maybe that I should use other methods/crates etc.
+Or maybe that I should use other methods/crates etc.\
 I still need to write test for the code and I need to add better comments/documentation.\
 My **first priority** was to get better with Rust.
 
@@ -15,12 +15,12 @@ I don't know how a real Ghostbox/Ovilus algorithm works or looks like.\
 So I made it very simple.
 
 1. The program contains a file with English words.\
-I generate a random number between 0 and number of English words (more than 450 thousand)
-2. I generate two other random numbers.\
+I generate a random number between 0 and the total number of English words (more than 450 thousand)
+2. Then the code generates two other random numbers.\
 Default between 0 and 100.
 3. First it gets time to generate a number for the word.\
-Then time for both of the other random numbers.\
-After that it check if both numbers are equal.\
+Then gets time for both of the other random numbers.\
+After that it checks if both numbers are equal.\
 If they are equal then a word is found.
 
 ## How it looks
