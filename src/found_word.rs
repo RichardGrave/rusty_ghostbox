@@ -12,7 +12,7 @@ impl Word {
     pub fn create_header() -> String {
         format!(
             //Apparently we can't use constants????
-            "{:10}{:25}{:10}{:10}{:20}",
+            "{:10}{:25}{:15}{:12}{:15}",
             "Time", "Word", "Random 1", "Random 2", "Chance range"
         )
     }
@@ -23,7 +23,7 @@ impl fmt::Display for Word {
         write!(
             f,
             //Apparently we can't use constants????
-            "{:10}{:25}{:10}{:10}{:20}",
+            "{:10}{:25}{:15}{:15}{:15}",
             self.time_found, self.word, self.chance_num_one, self.chance_num_two, self.chance_range
         )
     }

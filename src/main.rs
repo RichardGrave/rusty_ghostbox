@@ -1,20 +1,18 @@
-extern crate crossterm;
 extern crate chrono;
+extern crate crossterm;
 
 mod found_word;
 mod options;
 mod window;
 
+use chrono::Local;
 use crossterm::{cursor, input, terminal, ClearType, InputEvent, KeyEvent, RawScreen};
 use found_word::Word;
 use options::Options;
 use rand::Rng;
-use std::fs::File;
-use std::io::{BufRead, BufReader};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
-use chrono::Local;
 use window::Window;
 
 const INCREASE_CHANCE: char = 'a';
@@ -33,7 +31,8 @@ const RANGE_STEPS: u16 = 10;
 const LOWEST_SLEEP: u64 = 50;
 const SLEEP_STEPS: u64 = 50;
 const WORDS_TO_TAKE: u16 = 45;
-const FILE_NAME: &str = "src/english_words.txt";
+// const FILE_NAME: &str = "english_words.txt";
+static WORDS_FILE: &'static str = include_str!("english_words.txt");
 
 const OPTIONS_WINDOW: Window = Window {
     begin_row: 0u16,
@@ -62,8 +61,7 @@ fn main() {
     clear_term();
     print_at_pos(0, 0, "Loading file...");
 
-    let mut word_vector: Vec<String> = Vec::new();
-    init_word_vec(&mut word_vector);
+    let word_vector: Vec<String> = WORDS_FILE.lines().map(|line| line.to_string()).collect();
 
     //try to create the windows parts
     create_options_window(&word_vector);
@@ -183,13 +181,6 @@ fn create_info_list(options: &Options) {
         //get a empty row between them
         pos_option += 2;
     }
-}
-
-fn init_word_vec(word_vector: &mut Vec<String>) {
-    let words_file = File::open(FILE_NAME).expect("opening file");
-    let file_reader = BufReader::new(&words_file);
-
-    *word_vector = file_reader.lines().map(|line| line.unwrap()).collect();
 }
 
 fn get_words_by_chance(key_press_clone: &Arc<Mutex<char>>, word_vector: &Vec<String>) {
