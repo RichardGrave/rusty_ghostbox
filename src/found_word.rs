@@ -8,8 +8,11 @@ pub struct Word {
     pub chance_range: String,
 }
 
+//Longest word is 45 chars long
+//This one: pneumonoultramicroscopicsilicovolcanoconiosis
+//And yes, this is for real
+
 impl Word {
-    //Longest word is 45 chars long
     pub fn create_header() -> String {
         format!(
             //Apparently we can't use constants????
@@ -20,7 +23,6 @@ impl Word {
 }
 
 impl fmt::Display for Word {
-    //Longest word is 45 chars long
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
