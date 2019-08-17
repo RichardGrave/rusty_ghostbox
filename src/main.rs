@@ -18,18 +18,20 @@ const DECREASE_CHANCE: char = 'd';
 const WORD_SLEEP: char = 'w';
 const RANDOM_ONE_SLEEP: char = '1';
 const RANDOM_TWO_SLEEP: char = '2';
+const RESET_OPTIONS: char = 'r';
 
 const DEFAULT_SLEEP_DURATION: time::Duration = time::Duration::from_millis(250);
 const DEFAULT_CHANGE_RANGE: u16 = 100;
 const WORDS_TO_TAKE: u16 = 45;
 const FILE_NAME: &str = "src/english_words.txt";
 
-static OPTIONS_LIST: [&'static str; 6] = [
+static OPTIONS_LIST: [&'static str; 7] = [
     "i: increase chance to find word",
     "d: decrease chance to find word",
     "w: give more time to search for word",
     "1: give more time to search for random num 1",
     "2: give more time to search for random num 2",
+    "r: reset options",
     "q: quit the program",
 ];
 
@@ -58,6 +60,24 @@ const INFO_WINDOW: Window = Window {
     end_row: OPTIONS_WINDOW.end_row + 20,
     end_column: OPTIONS_WINDOW.end_column,
 };
+
+struct Options {
+    chance_range: u16,
+    word_sleep: time::Duration,
+    random_one_sleep: time::Duration,
+    random_two_sleep: time::Duration,
+}
+
+impl Default for Options {
+    fn default() -> Self {
+        Options {
+            chance_range: DEFAULT_CHANGE_RANGE,
+            word_sleep: DEFAULT_SLEEP_DURATION,
+            random_one_sleep: DEFAULT_SLEEP_DURATION,
+            random_two_sleep: DEFAULT_SLEEP_DURATION,
+        }
+    }
+}
 
 //TODO:RG global variables?
 //TODO:RG after quiting we need to get control back for the Terminal
@@ -149,10 +169,7 @@ fn init_word_vec(word_vector: &mut Vec<String>) {
 
 fn check_on_chance(key_press_clone: &Arc<Mutex<char>>, word_vector: &Vec<String>) {
     let mut found_words = Vec::<Word>::new();
-    let mut chance_range = DEFAULT_CHANGE_RANGE;
-    let mut word_sleep = DEFAULT_SLEEP_DURATION;
-    let mut random_one_sleep = DEFAULT_SLEEP_DURATION;
-    let mut random_two_sleep = DEFAULT_SLEEP_DURATION;
+    let mut options = Options::default();
 
     loop {
         match *key_press_clone.lock().unwrap() {
@@ -161,14 +178,17 @@ fn check_on_chance(key_press_clone: &Arc<Mutex<char>>, word_vector: &Vec<String>
                 break;
             }
             INCREASE_CHANCE => {
-                increase_decrease_chance(&mut chance_range, &true);
+                increase_decrease_chance(&mut options.chance_range, &true);
             }
             DECREASE_CHANCE => {
-                increase_decrease_chance(&mut chance_range, &false);
+                increase_decrease_chance(&mut options.chance_range, &false);
             }
             WORD_SLEEP => {}
             RANDOM_ONE_SLEEP => {}
             RANDOM_TWO_SLEEP => {}
+            RESET_OPTIONS => {
+                options = Options::default();
+            }
             _ => {}
         }
 
@@ -176,16 +196,16 @@ fn check_on_chance(key_press_clone: &Arc<Mutex<char>>, word_vector: &Vec<String>
         *key_press_clone.lock().unwrap() = ' ';
 
         //Give time to fetch word
-        thread::sleep(word_sleep);
+        thread::sleep(options.word_sleep);
         let word_on_line = rand::thread_rng().gen_range(0, word_vector.len());
 
         //Give time to set next two ranges on the same number
-        thread::sleep(random_one_sleep);
-        let first_chance = rand::thread_rng().gen_range(0, chance_range);
+        thread::sleep(options.random_one_sleep);
+        let first_chance = rand::thread_rng().gen_range(0, options.chance_range);
 
         //Give time to set next second equal to the first
-        thread::sleep(random_two_sleep);
-        let second_chance = rand::thread_rng().gen_range(0, chance_range);
+        thread::sleep(options.random_two_sleep);
+        let second_chance = rand::thread_rng().gen_range(0, options.chance_range);
 
         //If they both generate the same number then show the word on this line
         if first_chance == second_chance {
@@ -207,13 +227,15 @@ fn increase_decrease_chance(chance: &mut u16, increase: &bool) {
         if chance != &10u16 {
             *chance -= 10;
         } else {
-            *chance = 1;
+            //never lowen than 2 or we don't have a chance anymore, but constantly the same random numbers
+            *chance = 2;
         }
     } else {
         //decrease. The random numbers have to be higher so it's less likely they match
         if chance != &1u16 {
             *chance += 10;
         } else {
+            //if we have 2 then make it 10
             *chance = 10;
         }
     }
