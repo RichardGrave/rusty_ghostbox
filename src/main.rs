@@ -6,11 +6,11 @@ mod options;
 mod window;
 
 use chrono::Local;
-use crossterm::{cursor, input, terminal, ClearType, InputEvent, KeyEvent, RawScreen};
+use crossterm::{cursor, input, terminal, ClearType, RawScreen};
 use found_word::Word;
 use options::Options;
 use rand::Rng;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, RwLock};
 use std::thread;
 use std::time::Duration;
 use window::Window;
@@ -26,6 +26,7 @@ const DECREASE_RANDOM_TWO_SLEEP: char = '4';
 const RESET_OPTIONS: char = 'r';
 const QUIT: char = 'q';
 
+const KEY_LISTENER_SLEEP: u64 = 100;
 const LOWEST_RANGE: u16 = 10;
 const RANGE_STEPS: u16 = 10;
 const LOWEST_SLEEP: u64 = 50;
@@ -53,10 +54,10 @@ const INFO_WINDOW: Window = Window {
     end_column: OPTIONS_WINDOW.end_column,
 };
 
-//TODO:RG global variables?
-//TODO:RG after quiting we need to get control back for the Terminal
-
 fn main() {
+    let options: Arc<RwLock<Options>> = Arc::new(RwLock::new(Options::default()));
+    let options_clone = options.clone();
+
     //At start, clear the terminal
     clear_term();
     print_at_pos(0, 0, "Loading file...");
@@ -66,17 +67,16 @@ fn main() {
     //try to create the windows parts
     create_options_window(&word_vector);
     create_found_words_window();
-    create_info_window();
-
-    let key_press: Arc<Mutex<char>> = Arc::new(Mutex::new(' '));
-    let key_press_clone = key_press.clone();
+    //only need to do this for info
+    INFO_WINDOW.create_window();
+    create_info_list(&options);
 
     thread::spawn(move || {
-        key_listener(&key_press_clone);
+        key_listener(options_clone);
     });
 
     //go find words
-    get_words_by_chance(&key_press, &word_vector);
+    get_words_by_chance(&options, &word_vector);
 }
 
 fn create_options_array() -> Vec<String> {
@@ -166,47 +166,34 @@ fn create_found_words_window() {
     );
 }
 
-fn create_info_window() {
-    INFO_WINDOW.create_window();
-    create_info_list(&Options::default());
-}
-
-fn create_info_list(options: &Options) {
+fn create_info_list(options: &Arc<RwLock<Options>>) {
     let writing_position = INFO_WINDOW.get_writing_positon();
     //+2 because the headers are printed first and we need some space between them
     let mut pos_option = writing_position.row + 2;
 
-    for option in options.get_all_info().iter() {
+    for option in options.read().unwrap().get_all_info().iter() {
         print_at_pos(writing_position.column, pos_option, option);
         //get a empty row between them
         pos_option += 2;
     }
 }
 
-fn get_words_by_chance(key_press_clone: &Arc<Mutex<char>>, word_vector: &Vec<String>) {
+fn get_words_by_chance(options: &Arc<RwLock<Options>>, word_vector: &Vec<String>) {
     let mut found_words = Vec::<Word>::new();
-    let mut options = Options::default();
 
     loop {
-        if change_option_values(key_press_clone, &mut options) {
-            break;
-        }
-
-        //reset key_press
-        *key_press_clone.lock().unwrap() = ' ';
-
         //Give time to fetch word
-        thread::sleep(options.word_sleep);
+        thread::sleep(options.read().unwrap().word_sleep);
         //use number of words in vector as the range
         let word_on_line = rand::thread_rng().gen_range(0, word_vector.len());
 
         //Give time to set next two ranges on the same number
-        thread::sleep(options.random_one_sleep);
-        let first_chance = rand::thread_rng().gen_range(0, options.chance_range);
+        thread::sleep(options.read().unwrap().random_one_sleep);
+        let first_chance = rand::thread_rng().gen_range(0, options.read().unwrap().chance_range);
 
         //Give time to set next second equal to the first
-        thread::sleep(options.random_two_sleep);
-        let second_chance = rand::thread_rng().gen_range(0, options.chance_range);
+        thread::sleep(options.read().unwrap().random_two_sleep);
+        let second_chance = rand::thread_rng().gen_range(0, options.read().unwrap().chance_range);
 
         //If they both generate the same number then show the word on this line
         if first_chance == second_chance {
@@ -215,72 +202,12 @@ fn get_words_by_chance(key_press_clone: &Arc<Mutex<char>>, word_vector: &Vec<Str
                 word: word_vector.get(word_on_line).unwrap().clone(),
                 chance_num_one: first_chance.to_string(),
                 chance_num_two: second_chance.to_string(),
-                chance_range: options.chance_range.to_string(),
+                chance_range: options.read().unwrap().chance_range.to_string(),
             };
             found_words.push(word);
             print_found_words(&found_words);
         }
     }
-}
-
-//TODO:RG should not be done here. The more sleep time the longer it takes to adjust the values
-
-fn change_option_values(key_press_clone: &Arc<Mutex<char>>, options: &mut Options) -> bool {
-    let mut quit_program = false;
-
-    match *key_press_clone.lock().unwrap() {
-        QUIT => {
-            //Inform the loop that we pressed 'q' and quit the program
-            quit_program = true;
-        }
-        INCREASE_CHANCE => {
-            increase_decrease_chance(&mut options.chance_range, true);
-            //change info
-            create_info_list(&options);
-        }
-        DECREASE_CHANCE => {
-            increase_decrease_chance(&mut options.chance_range, false);
-            //change info
-            create_info_list(&options);
-        }
-        INCREASE_WORD_SLEEP => {
-            increase_decrease_sleep(&mut options.word_sleep, true);
-            //change info
-            create_info_list(&options);
-        }
-        DECREASE_WORD_SLEEP => {
-            increase_decrease_sleep(&mut options.word_sleep, false);
-            //change info
-            create_info_list(&options);
-        }
-        INCREASE_RANDOM_ONE_SLEEP => {
-            increase_decrease_sleep(&mut options.random_one_sleep, true);
-            //change info
-            create_info_list(&options);
-        }
-        DECREASE_RANDOM_ONE_SLEEP => {
-            increase_decrease_sleep(&mut options.random_one_sleep, false);
-            //change info
-            create_info_list(&options);
-        }
-        INCREASE_RANDOM_TWO_SLEEP => {
-            increase_decrease_sleep(&mut options.random_two_sleep, true);
-            //change info
-            create_info_list(&options);
-        }
-        DECREASE_RANDOM_TWO_SLEEP => {
-            increase_decrease_sleep(&mut options.random_two_sleep, false);
-            //change info
-            create_info_list(&options);
-        }
-        RESET_OPTIONS => {
-            *options = Options::default();
-            create_info_list(&options);
-        }
-        _ => {}
-    }
-
-    quit_program
 }
 
 fn increase_decrease_sleep(sleep_time: &mut Duration, increase_sleep: bool) {
@@ -334,7 +261,7 @@ fn print_found_words(found_words: &Vec<Word>) {
     }
 }
 
-fn key_listener(key_press_clone: &Arc<Mutex<char>>) {
+fn key_listener(options: Arc<RwLock<Options>>) {
     // make sure to enable raw mode, this will make sure key events won't be handled by the terminal it's self
     // and allows crossterm to read the input and pass it back to you.
     if let Ok(_raw) = RawScreen::into_raw_mode() {
@@ -343,50 +270,80 @@ fn key_listener(key_press_clone: &Arc<Mutex<char>>) {
         // enable mouse events to be captured.
         input.enable_mouse_mode().unwrap();
 
-        let mut stdin = input.read_async();
-
+        //We dont want the input queued while keeping the keyboard char pressed down.
+        //So when we release the key, nothing should happen in the background
         loop {
-            if let Some(key_event) = stdin.next() {
-                process_input_event(key_press_clone, &key_event);
-
-                //End loop if we pressed 'q' (quit)
-                if *key_press_clone.lock().unwrap() == QUIT {
-                    break;
-                }
+            match input.read_char() {
+                Ok(c) => process_input_event(&options, c),
+                Err(e) => println!("error: {}", e),
             }
-            thread::sleep(Duration::from_millis(10));
+
+            thread::sleep(Duration::from_millis(KEY_LISTENER_SLEEP));
         }
     }
 }
 
 //TODO:RG build a use for: key_press_clone: &Arc<Mutex<char>>
-fn process_input_event(key_press_clone: &Arc<Mutex<char>>, key_event: &InputEvent) {
-    //TODO:RG do key_events to increase/lower the chance or the speed
+fn process_input_event(options: &Arc<RwLock<Options>>, key_event: char) {
     match key_event {
-        InputEvent::Keyboard(event) => {
-            match event {
-                KeyEvent::Char(c) => match c {
-                    &QUIT => {
-                        print_at_pos(0, cursor().pos().1, "Quiting the program");
+        QUIT => {
+            print_at_pos(0, cursor().pos().1, "Quiting the program");
 
-                        // disable mouse events to be captured.
-                        if let Ok(_raw) = RawScreen::disable_raw_mode() {
-                            let input = input();
-                            input
-                                .disable_mouse_mode()
-                                .expect("Tried to disable mouse mode");
-                        }
-                        clear_term();
-                        terminal().exit();
-                    }
-                    //ignore the rest
-                    _ => {
-                        *key_press_clone.lock().unwrap() = *c;
-                    }
-                },
-                _ => (),
+            // disable mouse events to be captured.
+            if let Ok(_raw) = RawScreen::disable_raw_mode() {
+                let input = input();
+                input
+                    .disable_mouse_mode()
+                    .expect("Tried to disable mouse mode");
             }
+            clear_term();
+            terminal().exit();
         }
+        INCREASE_CHANCE => {
+            increase_decrease_chance(&mut options.write().unwrap().chance_range, true);
+            //change info
+            create_info_list(&options);
+        }
+        DECREASE_CHANCE => {
+            increase_decrease_chance(&mut options.write().unwrap().chance_range, false);
+            //change info
+            create_info_list(&options);
+        }
+        INCREASE_WORD_SLEEP => {
+            increase_decrease_sleep(&mut options.write().unwrap().word_sleep, true);
+            //change info
+            create_info_list(&options);
+        }
+        DECREASE_WORD_SLEEP => {
+            increase_decrease_sleep(&mut options.write().unwrap().word_sleep, false);
+            //change info
+            create_info_list(&options);
+        }
+        INCREASE_RANDOM_ONE_SLEEP => {
+            increase_decrease_sleep(&mut options.write().unwrap().random_one_sleep, true);
+            //change info
+            create_info_list(&options);
+        }
+        DECREASE_RANDOM_ONE_SLEEP => {
+            increase_decrease_sleep(&mut options.write().unwrap().random_one_sleep, false);
+            //change info
+            create_info_list(&options);
+        }
+        INCREASE_RANDOM_TWO_SLEEP => {
+            increase_decrease_sleep(&mut options.write().unwrap().random_two_sleep, true);
+            //change info
+            create_info_list(&options);
+        }
+        DECREASE_RANDOM_TWO_SLEEP => {
+            increase_decrease_sleep(&mut options.write().unwrap().random_two_sleep, false);
+            //change info
+            create_info_list(&options);
+        }
+        RESET_OPTIONS => {
+            *options.write().unwrap() = Options::default();
+            create_info_list(&options);
+        }
+        //ignore the rest
         _ => (),
     }
 }
