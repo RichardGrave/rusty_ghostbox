@@ -45,7 +45,7 @@ const FOUND_WORDS_WINDOW: Window = Window {
     begin_row: 0u16,
     begin_column: OPTIONS_WINDOW.end_column + 1,
     end_row: OPTIONS_WINDOW.end_row + 20,
-    end_column: OPTIONS_WINDOW.end_column + 85,
+    end_column: OPTIONS_WINDOW.end_column + 110,
 };
 const INFO_WINDOW: Window = Window {
     begin_row: OPTIONS_WINDOW.end_row + 1,

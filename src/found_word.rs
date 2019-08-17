@@ -9,22 +9,28 @@ pub struct Word {
 }
 
 impl Word {
+    //Longest word is 45 chars long
     pub fn create_header() -> String {
         format!(
             //Apparently we can't use constants????
-            "{:10}{:25}{:15}{:12}{:15}",
-            "Time", "Word", "Random 1", "Random 2", "Chance range"
+            "{:15}{:20}{:20}{:47}",
+            "Time", "Chance range", "Random numbers", "Word found is"
         )
     }
 }
 
 impl fmt::Display for Word {
+    //Longest word is 45 chars long
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
             //Apparently we can't use constants????
-            "{:10}{:25}{:15}{:15}{:15}",
-            self.time_found, self.word, self.chance_num_one, self.chance_num_two, self.chance_range
+            "{:15}{:20}{:20}{:47}",
+            //only print chance_num_one because both chance_num's should be the same.
+            self.time_found,
+            self.chance_range,
+            self.chance_num_one,
+            self.word
         )
     }
 }
