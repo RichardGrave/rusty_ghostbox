@@ -4,7 +4,7 @@
 I am learning the Rust programming language and needed a project to do.\
 I enjoy watching the [Ghost Adventures](https://en.wikipedia.org/wiki/Ghost_Adventures). So, I thought it would be fun to make an Ovilus.\
 An Ovilus uses a word database and **not** recorded voices or sounds.\
-The Ovilus itself speaks the chosen words.
+The Ovilus device itself speaks the chosen words (this application doesn't).
 
 ## Code
 I'm still learning Rust so there can be a lot of inefficient code.\
@@ -18,6 +18,8 @@ I use a Mac and I dont know if this works on Windows/other Linux systems.
 ## How it works
 
 I don't know how a real Ghostbox/Ovilus algorithm works or looks like.\
+The real Ovilus device also uses special sensors. This application does not.
+
 So I made it very simple.
 
 1. The program contains a file with English words.\
