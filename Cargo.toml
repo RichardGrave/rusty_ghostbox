@@ -1,8 +1,17 @@
 [package]
-name = "ghostbox"
+name = "rusty_ghostbox"
 version = "0.1.0"
 authors = ["richardgrave <29334853+RichardGrave@users.noreply.github.com>"]
+description = "Ovilus/ghostbox"
+license = "GNU General Public License v3.0"
+license-file = "LICENSE"
 edition = "2018"
+readme = "README.md"
+homepage = "https://github.com/RichardGrave"
+repository = "https://github.com/RichardGrave/rusty_ghostbox"
+keywords = ["ovilus","ghostbox","spiritbox","rust","ghostadventures","terminal","paranormal", "rustprogramming"]
+categories = ["command-line-utilities"]
+publish = false
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

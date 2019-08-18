@@ -3,16 +3,20 @@
 ## [Ovilus](https://rationalwiki.org/wiki/Ovilus)/Ghostbox/Spiritbox
 I am learning the Rust programming language and needed a project to do.\
 I enjoy watching the [Ghost Adventures](https://en.wikipedia.org/wiki/Ghost_Adventures). So, I thought it would be fun to make an Ovilus.\
-An Ovilus uses a word database and **not** recorded voices or sounds.
+An Ovilus uses a word database and **not** recorded voices or sounds.\
 The Ovilus itself speaks the chosen words.
 
 ## Code
 I'm still learning Rust so there can be a lot of inefficient code.\
 Or maybe that I should use other methods/crates etc.\
-I still need to write test for the code and I need to add better comments/documentation.\
+I also still need to write test for the code and I need to add better comments/documentation.\
 My **first priority** was to get better with Rust.
 
+**Also**:\
+I use a Mac and I dont know if this works on Windows/other Linux systems.
+
 ## How it works
+
 I don't know how a real Ghostbox/Ovilus algorithm works or looks like.\
 So I made it very simple.
 
