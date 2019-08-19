@@ -55,7 +55,7 @@ Give the ghost more or less time to find a number (in milliseconds)
 - increase/decrease **time to search for random number two**\
 Give the ghost more or less time to find the same number (in milliseconds)
 - after you have changed the options to **reset options to default**
-- and ofcourse **quit the program**
+- and of course **quit the program**
 
 ## Results
 Although this is just all for **fun**, I had a weird experience.\
