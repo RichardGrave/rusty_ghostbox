@@ -135,7 +135,7 @@ fn create_options_window(word_vector: &Vec<String>) {
     print_at_pos(
         writing_position.column,
         pos_option,
-        &format!("You can keep the keys pressed to chance the values"),
+        &format!("You can keep the keys pressed to change the values"),
     );
 
     pos_option += 2;
