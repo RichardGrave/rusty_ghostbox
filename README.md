@@ -22,14 +22,20 @@ The real Ovilus device also uses special sensors. This application does not.
 
 So I made it very simple.
 
-1. The program contains a file with English words.\
-I generate a random number between 0 and the total number of English words (more than 450 thousand)
-2. Then the code generates two other random numbers.\
+- The program contains a file with English words.\
+It gets a waiting time and then it generates a random number\
+between 0 and the total number of English words (more than 450 thousand).\
+It uses the random number to look up the word that is on that line number.
+- Then it gets another waiting time before generating a random number (1).\
 Default between 0 and 100.
-3. First it gets time to generate a number for the word.\
-Then gets time for both of the other random numbers.\
-After that it checks if both numbers are equal.\
+- After that it gets another waiting time before generating a random number (2).\
+Also default between 0 and 100.
+- When that's all done, it checks if both random numbers are equal.\
 If they are equal then a word is found.
+- Then the loop continues
+
+In theory a ghost/spirit uses the waiting time (in milliseconds) to search for a word\
+and then tries to influence the outcome of the numbers.
 
 ## How it looks
 It's a terminal application and it will use your terminal colors.\
