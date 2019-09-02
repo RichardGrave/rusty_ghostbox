@@ -57,16 +57,6 @@ Give the ghost more or less time to find the same number (in milliseconds)
 - after you have changed the options to **reset options to default**
 - and of course **quit the program**
 
-## Results
-Although this is just all for **fun**, I had a weird experience.\
-I asked 'Do you know what my name is'.\
-Then within 2 or 3 seconds I got the response 'Richardia'. According to Google that's a flower.\
-In case you (the reader) didn't know, my name is Richard.\
-I should buy a lottery ticket, maybe I am lucky enough with that too :)
-
-But I **don't** believe it was supernatural, just dumb luck.\
-Because after that response nothing seemed to make sense with the responses and my questions.
-
 ## Used resources
 [Crossterm](https://github.com/TimonPost/crossterm)\
 [Rand](https://github.com/rust-random/rand)\
