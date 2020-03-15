@@ -17,5 +17,5 @@ publish = false
 
 [dependencies]
 crossterm = "0.10.2"
-rand = "0.7.0"
-chrono = "0.4.7"
+rand = "0.7.3"
+chrono = "0.4.10"

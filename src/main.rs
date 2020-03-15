@@ -64,19 +64,27 @@ fn main() {
 
     let word_vector: Vec<String> = WORDS_FILE.lines().map(|line| line.to_string()).collect();
 
-    //try to create the windows parts
-    create_options_window(&word_vector);
-    create_found_words_window();
-    //only need to do this for info
-    INFO_WINDOW.create_window();
-    create_info_list(&options);
-
     thread::spawn(move || {
         key_listener(options_clone);
     });
 
     //go find words
     get_words_by_chance(&options, &word_vector);
+}
+
+fn creat_all_windows(
+    options: &Arc<RwLock<Options>>,
+    word_vector_size: usize,
+    found_words: &Vec<Word>,
+) {
+    //At start, clear the terminal
+    clear_term();
+    create_options_window(word_vector_size);
+    create_found_words_window();
+    //only need to do this for info
+    INFO_WINDOW.create_window();
+    create_info_list(&options);
+    print_found_words(&found_words);
 }
 
 fn create_options_array() -> Vec<String> {
@@ -116,14 +124,14 @@ fn create_options_array() -> Vec<String> {
     option_list
 }
 
-fn create_options_window(word_vector: &Vec<String>) {
+fn create_options_window(word_vector_size: usize) {
     let writing_position = OPTIONS_WINDOW.get_writing_positon();
     OPTIONS_WINDOW.create_window();
 
     print_at_pos(
         writing_position.column,
         writing_position.row,
-        &format!("Loaded {} English words", word_vector.len()),
+        &format!("Loaded {} English words", word_vector_size),
     );
     let mut pos_option = writing_position.row + 2;
     print_at_pos(
@@ -182,6 +190,8 @@ fn get_words_by_chance(options: &Arc<RwLock<Options>>, word_vector: &Vec<String>
     let mut found_words = Vec::<Word>::new();
 
     loop {
+        //try to create the windows parts
+        creat_all_windows(options, word_vector.len(), &found_words);
         //Give time to fetch word
         thread::sleep(options.read().unwrap().word_sleep);
         //use number of words in vector as the range
@@ -205,7 +215,6 @@ fn get_words_by_chance(options: &Arc<RwLock<Options>>, word_vector: &Vec<String>
                 chance_range: options.read().unwrap().chance_range.to_string(),
             };
             found_words.push(word);
-            print_found_words(&found_words);
         }
     }
 }
