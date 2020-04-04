@@ -1,4 +1,5 @@
-use crossterm::cursor;
+use crossterm::{cursor, execute, style};
+use std::io::{stdout, Write};
 
 pub struct Window {
     pub begin_row: u16,
@@ -30,41 +31,48 @@ impl Window {
     }
 
     pub fn get_writing_positon(&self) -> CursorPosition {
-        CursorPosition {column: self.begin_column + 2, row: self.begin_row + 2 }
+        CursorPosition {
+            column: self.begin_column + 2,
+            row: self.begin_row + 2,
+        }
     }
 
     fn create_corners(&self) {
-        cursor()
-            .goto(self.begin_column, self.begin_row)
-            .expect("tried to goto upper_left");
-        print!("{}", UPPER_LEFT_CORNER);
-        cursor()
-            .goto(self.begin_column, self.end_row)
-            .expect("tried to goto lower_left");
-        print!("{}", LOWER_LEFT_CORNER);
-        cursor()
-            .goto(self.end_column, self.begin_row)
-            .expect("tried to goto upper_righ");
-        print!("{}", UPPER_RIGHT_CORNER);
-        cursor()
-            .goto(self.end_column, self.end_row)
-            .expect("tried to goto lower_right");
-        print!("{}", LOWER_RIGHT_CORNER);
+        //Print to screen or give error message if it fails
+        if let Err(err_message) = execute!(
+            stdout(),
+            cursor::MoveTo(self.begin_column, self.begin_row),
+            style::Print(UPPER_LEFT_CORNER),
+            cursor::MoveTo(self.begin_column, self.end_row),
+            style::Print(LOWER_LEFT_CORNER),
+            cursor::MoveTo(self.end_column, self.begin_row),
+            style::Print(UPPER_RIGHT_CORNER),
+            cursor::MoveTo(self.end_column, self.end_row),
+            style::Print(LOWER_RIGHT_CORNER)
+        ) {
+            println!("{}", err_message);
+        }
     }
 
     fn create_left_right(column: u16, begin: u16, end: u16) {
         for row in begin..end {
-            cursor()
-                .goto(column, row)
-                .expect("tried to goto left_right");
-            print!("{}", LINE_UP_DOWN);
+            Self::create_line(column, row, LINE_UP_DOWN);
         }
     }
 
     fn create_up_down(row: u16, begin: u16, end: u16) {
         for column in begin..end {
-            cursor().goto(column, row).expect("tried to goto up_down");
-            print!("{}", LINE_LEFT_RIGHT);
+            Self::create_line(column, row, LINE_LEFT_RIGHT);
+        }
+    }
+
+    fn create_line(column: u16, row: u16, character: char) {
+        if let Err(err_message) = execute!(
+            stdout(),
+            cursor::MoveTo(column, row),
+            style::Print(character)
+        ) {
+            println!("{}", err_message);
         }
     }
 }

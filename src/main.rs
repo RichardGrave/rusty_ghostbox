@@ -6,10 +6,15 @@ mod options;
 mod window;
 
 use chrono::Local;
-use crossterm::{cursor, input, terminal, ClearType, RawScreen};
+use crossterm::event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEvent};
+use crossterm::terminal::{self, ClearType};
+use crossterm::{cursor, execute, style};
 use found_word::Word;
 use options::Options;
 use rand::Rng;
+use std::fmt::Display;
+use std::io::{stdout, Write};
+use std::sync::mpsc::{Receiver, Sender};
 use std::sync::{Arc, RwLock};
 use std::thread;
 use std::time::Duration;
@@ -25,6 +30,9 @@ const INCREASE_RANDOM_TWO_SLEEP: char = '3';
 const DECREASE_RANDOM_TWO_SLEEP: char = '4';
 const RESET_OPTIONS: char = 'r';
 const QUIT: char = 'q';
+
+const EXIT_PROGRAM: bool = true;
+const DONT_EXIT_PROGRAM: bool = false;
 
 const KEY_LISTENER_SLEEP: u64 = 100;
 const LOWEST_RANGE: u16 = 10;
@@ -55,36 +63,66 @@ const INFO_WINDOW: Window = Window {
 };
 
 fn main() {
-    let options: Arc<RwLock<Options>> = Arc::new(RwLock::new(Options::default()));
-    let options_clone = options.clone();
+    //Try to enter alternate screen or print error
+    if let Err(err_mess) = execute!(stdout(), terminal::EnterAlternateScreen) {
+        println!("{}", err_mess);
+    }
 
     //At start, clear the terminal
     clear_term();
     print_at_pos(0, 0, "Loading file...");
 
+    let options: Arc<RwLock<Options>> = Arc::new(RwLock::new(Options::default()));
+    let options_thread_one = options.clone();
+    let options_thread_two = options.clone();
+
+    let found_words: Arc<RwLock<Vec<Word>>> = Arc::new(RwLock::new(Vec::<Word>::default()));
+    let found_words_thread_one = found_words.clone();
+    let found_words_thread_two = found_words.clone();
+
+    //All the words from a file
     let word_vector: Vec<String> = WORDS_FILE.lines().map(|line| line.to_string()).collect();
+    let word_vector_size = word_vector.len();
+
+    let (chan_sender, chan_receiver): (Sender<bool>, Receiver<bool>) = std::sync::mpsc::channel();
+    let chan_sender_key_listener = chan_sender.clone();
 
     thread::spawn(move || {
-        key_listener(options_clone);
+        key_listener(options_thread_one, chan_sender_key_listener);
+    });
+    thread::spawn(move || {
+        creat_all_windows(
+            options_thread_two,
+            word_vector_size,
+            found_words_thread_one,
+            chan_receiver,
+        );
     });
 
     //go find words
-    get_words_by_chance(&options, &word_vector);
+    get_words_by_chance(options, word_vector, found_words_thread_two, chan_sender);
 }
 
 fn creat_all_windows(
-    options: &Arc<RwLock<Options>>,
+    options: Arc<RwLock<Options>>,
     word_vector_size: usize,
-    found_words: &Vec<Word>,
+    found_words: Arc<RwLock<Vec<Word>>>,
+    chan_receiver: Receiver<bool>,
 ) {
-    //At start, clear the terminal
-    clear_term();
-    create_options_window(word_vector_size);
-    create_found_words_window();
-    //only need to do this for info
-    INFO_WINDOW.create_window();
-    create_info_list(&options);
-    print_found_words(&found_words);
+    loop {
+        //Show everything on the screen
+        create_options_window(word_vector_size);
+        create_found_words_window();
+        //only need to do this for info
+        INFO_WINDOW.create_window();
+        create_info_list(&options);
+        print_found_words(&found_words.read().unwrap());
+
+        //Keep blocking till we receive something or print error if something went wrong
+        if let Err(err_mess) = chan_receiver.recv() {
+            println!("{}", err_mess);
+        }
+    }
 }
 
 fn create_options_array() -> Vec<String> {
@@ -165,6 +203,7 @@ fn create_options_window(word_vector_size: usize) {
 }
 
 fn create_found_words_window() {
+    //Yep, this does what is says ;) Creates a window for the words
     let writing_position = FOUND_WORDS_WINDOW.get_writing_positon();
     FOUND_WORDS_WINDOW.create_window();
     print_at_pos(
@@ -180,18 +219,19 @@ fn create_info_list(options: &Arc<RwLock<Options>>) {
     let mut pos_option = writing_position.row + 2;
 
     for option in options.read().unwrap().get_all_info().iter() {
-        print_at_pos(writing_position.column, pos_option, option);
+        print_at_pos(writing_position.column, pos_option, &option);
         //get a empty row between them
         pos_option += 2;
     }
 }
 
-fn get_words_by_chance(options: &Arc<RwLock<Options>>, word_vector: &Vec<String>) {
-    let mut found_words = Vec::<Word>::new();
-
+fn get_words_by_chance(
+    options: Arc<RwLock<Options>>,
+    word_vector: Vec<String>,
+    found_words: Arc<RwLock<Vec<Word>>>,
+    chan_sender: Sender<bool>,
+) {
     loop {
-        //try to create the windows parts
-        creat_all_windows(options, word_vector.len(), &found_words);
         //Give time to fetch word
         thread::sleep(options.read().unwrap().word_sleep);
         //use number of words in vector as the range
@@ -214,7 +254,13 @@ fn get_words_by_chance(options: &Arc<RwLock<Options>>, word_vector: &Vec<String>
                 chance_num_two: second_chance.to_string(),
                 chance_range: options.read().unwrap().chance_range.to_string(),
             };
-            found_words.push(word);
+            found_words.write().unwrap().push(word);
+
+            //Doesn't matter if we send true or false. We just need to send something.
+            //Receiver blocks till we send
+            if let Err(err_msg) = chan_sender.send(true) {
+                println!("{}", err_msg);
+            }
         }
     }
 }
@@ -265,119 +311,128 @@ fn print_found_words(found_words: &Vec<Word>) {
 
     //Max 20 words
     for found_word in last_twenty_words {
-        print_word_at_pos(writing_position.column, pos_word, &found_word);
+        print_at_pos(writing_position.column, pos_word, &found_word);
         pos_word += 1;
     }
 }
 
-fn key_listener(options: Arc<RwLock<Options>>) {
+fn key_listener(options: Arc<RwLock<Options>>, chan_sender: Sender<bool>) {
     // make sure to enable raw mode, this will make sure key events won't be handled by the terminal it's self
     // and allows crossterm to read the input and pass it back to you.
-    if let Ok(_raw) = RawScreen::into_raw_mode() {
-        let input = input();
-
+    if let Ok(_raw) = terminal::enable_raw_mode() {
         // enable mouse events to be captured.
-        input.enable_mouse_mode().unwrap();
+
+        //Enable mouse event capture or print error if it fails
+        if let Err(error_mess) = execute!(stdout(), EnableMouseCapture) {
+            println!("{}", error_mess);
+        }
 
         //We dont want the input queued while keeping the keyboard char pressed down.
         //So when we release the key, nothing should happen in the background
         loop {
-            match input.read_char() {
-                Ok(c) => process_input_event(&options, c),
-                Err(e) => println!("error: {}", e),
-            }
+            //get char so we can act on it
+            if let Ok(Event::Key(KeyEvent {
+                code: KeyCode::Char(c),
+                ..
+                //Not to happy about this event::read() because the key press spamming is back.
+                //We can't seem to do anything about it.
+                //I wish there was a DisableKeyboardCapture and DisableKeyboardCapture so we could
+                //temporarily disable key events
+            })) = event::read()
+            {
+                if process_input_event(&options, c) {
+                    //Cleanup if we want to quit the program
+                    cleanup_on_exit();
+                }
 
+                //Doesn't matter if we send true or false. We just need to send something.
+                //Receiver blocks till we send
+                if let Err(err_msg) = chan_sender.send(true) {
+                    println!("{}", err_msg);
+                }
+            }
+            //This stops the keypress spamming a bit
             thread::sleep(Duration::from_millis(KEY_LISTENER_SLEEP));
         }
     }
 }
 
-//TODO:RG build a use for: key_press_clone: &Arc<Mutex<char>>
-fn process_input_event(options: &Arc<RwLock<Options>>, key_event: char) {
-    match key_event {
-        QUIT => {
-            print_at_pos(0, cursor().pos().1, "Quiting the program");
-
-            // disable mouse events to be captured.
-            if let Ok(_raw) = RawScreen::disable_raw_mode() {
-                let input = input();
-                input
-                    .disable_mouse_mode()
-                    .expect("Tried to disable mouse mode");
-            }
-            clear_term();
-            terminal().exit();
-        }
+fn process_input_event(options: &Arc<RwLock<Options>>, key_code: char) -> bool {
+    match key_code {
+        QUIT => return EXIT_PROGRAM,
         INCREASE_CHANCE => {
             increase_decrease_chance(&mut options.write().unwrap().chance_range, true);
-            //change info
-            create_info_list(&options);
         }
         DECREASE_CHANCE => {
             increase_decrease_chance(&mut options.write().unwrap().chance_range, false);
-            //change info
-            create_info_list(&options);
         }
         INCREASE_WORD_SLEEP => {
             increase_decrease_sleep(&mut options.write().unwrap().word_sleep, true);
-            //change info
-            create_info_list(&options);
         }
         DECREASE_WORD_SLEEP => {
             increase_decrease_sleep(&mut options.write().unwrap().word_sleep, false);
-            //change info
-            create_info_list(&options);
         }
         INCREASE_RANDOM_ONE_SLEEP => {
             increase_decrease_sleep(&mut options.write().unwrap().random_one_sleep, true);
-            //change info
-            create_info_list(&options);
         }
         DECREASE_RANDOM_ONE_SLEEP => {
             increase_decrease_sleep(&mut options.write().unwrap().random_one_sleep, false);
-            //change info
-            create_info_list(&options);
         }
         INCREASE_RANDOM_TWO_SLEEP => {
             increase_decrease_sleep(&mut options.write().unwrap().random_two_sleep, true);
-            //change info
-            create_info_list(&options);
         }
         DECREASE_RANDOM_TWO_SLEEP => {
             increase_decrease_sleep(&mut options.write().unwrap().random_two_sleep, false);
-            //change info
-            create_info_list(&options);
         }
         RESET_OPTIONS => {
             *options.write().unwrap() = Options::default();
-            create_info_list(&options);
         }
         //ignore the rest
         _ => (),
     }
+    DONT_EXIT_PROGRAM
 }
 
-//Set cursor to the start of the line
-fn print_at_pos(column: u16, row: u16, message: &str) {
-    cursor()
-        .goto(column, row)
-        .expect("tried to goto start of the line");
-
-    println!("{}", message);
+fn print_at_pos<T>(column: u16, row: u16, message: T)
+where
+    T: Copy + Display,
+{
+    //Print to screen or give error message if it fails
+    if let Err(err_mess) = execute!(stdout(), cursor::MoveTo(column, row), style::Print(message)) {
+        println!("{}", err_mess);
+    }
 }
 
-//Set cursor to the start of the line
-fn print_word_at_pos(column: u16, row: u16, message: &Word) {
-    cursor()
-        .goto(column, row)
-        .expect("tried to goto start of the line");
-
-    println!("{}", message);
-}
-
+//Clear terminal
 fn clear_term() {
-    // Clear loading;
-    terminal()
-        .clear(ClearType::All)
-        .expect("tried to clear terminal");
+    //Print to screen or give error message if it fails
+    if let Err(err_mess) = execute!(
+        stdout(),
+        cursor::MoveTo(1, 1),
+        terminal::Clear(ClearType::All),
+    ) {
+        println!("{}", err_mess);
+    }
+}
+
+//Do all this if we want to exit the program
+fn cleanup_on_exit() {
+    print_at_pos(0, cursor::position().unwrap().1, "Quiting the program");
+
+    // disable mouse events to be captured or print error if it fails
+    if let Ok(_raw) = terminal::disable_raw_mode() {
+        if let Err(error_mess) = execute!(stdout(), DisableMouseCapture) {
+            println!("{}", error_mess);
+        }
+    }
+
+    clear_term();
+
+    //Try to leave this screen and go back to the one we started this program in or print error
+    if let Err(err_mess) = execute!(stdout(), terminal::LeaveAlternateScreen) {
+        println!("{}", err_mess);
+    }
+
+    //Stop the program
+    std::process::exit(1);
 }
