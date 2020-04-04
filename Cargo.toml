@@ -15,7 +15,10 @@ publish = false
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[dependencies.crossterm]
+version = "0.17.1"
+features = ["event-stream"] 
+
 [dependencies]
-crossterm = "0.10.2"
 rand = "0.7.3"
-chrono = "0.4.10"
+chrono = "0.4.11"
