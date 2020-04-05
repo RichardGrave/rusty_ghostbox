@@ -181,7 +181,7 @@ fn create_options_window(word_vector_size: usize) {
     print_at_pos(
         writing_position.column,
         pos_option,
-        &format!("Do not hold the keys down for too long! (CrossTerm spams key events)"),
+        &format!("Do not hold the keys down for too long! (It spams key events)"),
     );
 
     pos_option += 2;
