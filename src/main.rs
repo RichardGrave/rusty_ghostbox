@@ -336,7 +336,7 @@ fn key_listener(options: Arc<RwLock<Options>>, chan_sender: Sender<bool>) {
                 ..
                 //Not to happy about this event::read() because the key press spamming is back.
                 //We can't seem to do anything about it.
-                //I wish there was a DisableKeyboardCapture and DisableKeyboardCapture so we could
+                //I wish there was a DisableKeyboardCapture and EnableKeyboardCapture so we could
                 //temporarily disable key events
             })) = event::read()
             {
