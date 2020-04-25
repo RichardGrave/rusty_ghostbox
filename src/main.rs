@@ -41,7 +41,7 @@ const LOWEST_SLEEP: u64 = 50;
 const SLEEP_STEPS: u64 = 50;
 const WORDS_TO_TAKE: u16 = 45;
 // const FILE_NAME: &str = "english_words.txt";
-static WORDS_FILE: &'static str = include_str!("english_words.txt");
+static WORDS_FILE: &'static str = include_str!("word_files/english_words.txt");
 
 const OPTIONS_WINDOW: Window = Window {
     begin_row: 0u16,
