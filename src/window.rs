@@ -1,5 +1,5 @@
 use crossterm::{cursor, execute, style};
-use std::io::{stdout, Write};
+use std::io::stdout;
 
 pub struct Window {
     pub begin_row: u16,

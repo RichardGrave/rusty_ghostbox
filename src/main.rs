@@ -13,7 +13,7 @@ use found_word::Word;
 use options::Options;
 use rand::Rng;
 use std::fmt::Display;
-use std::io::{stdout, Write};
+use std::io::stdout;
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::{Arc, RwLock};
 use std::thread;
@@ -235,15 +235,17 @@ fn get_words_by_chance(
         //Give time to fetch word
         thread::sleep(options.read().unwrap().word_sleep);
         //use number of words in vector as the range
-        let word_on_line = rand::thread_rng().gen_range(0, word_vector.len());
+
+        let word_on_line = rand::thread_rng().gen_range(0..word_vector.len());
 
         //Give time to set next two ranges on the same number
         thread::sleep(options.read().unwrap().random_one_sleep);
-        let first_chance = rand::thread_rng().gen_range(0, options.read().unwrap().chance_range);
+
+        let first_chance = rand::thread_rng().gen_range(0..options.read().unwrap().chance_range);
 
         //Give time to set next second equal to the first
         thread::sleep(options.read().unwrap().random_two_sleep);
-        let second_chance = rand::thread_rng().gen_range(0, options.read().unwrap().chance_range);
+        let second_chance = rand::thread_rng().gen_range(0..options.read().unwrap().chance_range);
 
         //If they both generate the same number then show the word on this line
         if first_chance == second_chance {
