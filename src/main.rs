@@ -144,24 +144,34 @@ fn create_options_array() -> Vec<String> {
     ));
     option_list.push(format!(
         "{}: increase time to search for random num 1",
-        INCREASE_RANDOM_ONE_SLEEP
+        get_key_from_keycode(&INCREASE_RANDOM_ONE_SLEEP)
     ));
     option_list.push(format!(
         "{}: decrease time to search for random num 1",
-        DECREASE_RANDOM_ONE_SLEEP
+        get_key_from_keycode(&DECREASE_RANDOM_ONE_SLEEP)
     ));
     option_list.push(format!(
         "{}: increase time to search for random num 2",
-        INCREASE_RANDOM_TWO_SLEEP
+        get_key_from_keycode(&INCREASE_RANDOM_TWO_SLEEP)
     ));
     option_list.push(format!(
         "{}: decrease time to search for random num 2",
-        DECREASE_RANDOM_TWO_SLEEP
+        get_key_from_keycode(&DECREASE_RANDOM_TWO_SLEEP)
     ));
     option_list.push(format!("{}: reset options to default", RESET_OPTIONS));
     option_list.push(format!("{}: quit the program", QUIT));
 
     option_list
+}
+
+fn get_key_from_keycode(keycode: &Keycode) -> &str {
+    match *keycode {
+        INCREASE_RANDOM_ONE_SLEEP => return "1",
+        DECREASE_RANDOM_ONE_SLEEP => return "2",
+        INCREASE_RANDOM_TWO_SLEEP => return "3",
+        DECREASE_RANDOM_TWO_SLEEP => return "4",
+        _ => return "",
+    }
 }
 
 fn create_options_window(word_vector_size: usize) {
