@@ -6,9 +6,10 @@ mod options;
 mod window;
 
 use chrono::Local;
-use crossterm::event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEvent};
+use crossterm::event::DisableMouseCapture;
 use crossterm::terminal::{self, ClearType};
 use crossterm::{cursor, execute, style};
+use device_query::{DeviceQuery, DeviceState, Keycode};
 use found_word::Word;
 use options::Options;
 use rand::Rng;
@@ -20,21 +21,18 @@ use std::thread;
 use std::time::Duration;
 use window::Window;
 
-const INCREASE_CHANCE: char = 'a';
-const DECREASE_CHANCE: char = 's';
-const INCREASE_WORD_SLEEP: char = 'w';
-const DECREASE_WORD_SLEEP: char = 'e';
-const INCREASE_RANDOM_ONE_SLEEP: char = '1';
-const DECREASE_RANDOM_ONE_SLEEP: char = '2';
-const INCREASE_RANDOM_TWO_SLEEP: char = '3';
-const DECREASE_RANDOM_TWO_SLEEP: char = '4';
-const RESET_OPTIONS: char = 'r';
-const QUIT: char = 'q';
+const INCREASE_CHANCE: Keycode = Keycode::A;
+const DECREASE_CHANCE: Keycode = Keycode::S;
+const INCREASE_WORD_SLEEP: Keycode = Keycode::W;
+const DECREASE_WORD_SLEEP: Keycode = Keycode::E;
+const INCREASE_RANDOM_ONE_SLEEP: Keycode = Keycode::Key1;
+const DECREASE_RANDOM_ONE_SLEEP: Keycode = Keycode::Key2;
+const INCREASE_RANDOM_TWO_SLEEP: Keycode = Keycode::Key3;
+const DECREASE_RANDOM_TWO_SLEEP: Keycode = Keycode::Key4;
+const RESET_OPTIONS: Keycode = Keycode::R;
+const QUIT: Keycode = Keycode::Q;
 
-const EXIT_PROGRAM: bool = true;
-const DONT_EXIT_PROGRAM: bool = false;
-
-const KEY_LISTENER_SLEEP: u64 = 100;
+const KEY_LISTENER_SLEEP: u64 = 10;
 const LOWEST_RANGE: u16 = 10;
 const RANGE_STEPS: u16 = 10;
 const LOWEST_SLEEP: u64 = 50;
@@ -72,35 +70,39 @@ fn main() {
     clear_term();
     print_at_pos(0, 0, "Loading file...");
 
-    let options: Arc<RwLock<Options>> = Arc::new(RwLock::new(Options::default()));
-    let options_thread_one = options.clone();
-    let options_thread_two = options.clone();
+    if let Ok(_raw) = terminal::enable_raw_mode() {
+        let options: Arc<RwLock<Options>> = Arc::new(RwLock::new(Options::default()));
+        let options_thread_one = options.clone();
+        let options_thread_two = options.clone();
 
-    let found_words: Arc<RwLock<Vec<Word>>> = Arc::new(RwLock::new(Vec::<Word>::default()));
-    let found_words_thread_one = found_words.clone();
-    let found_words_thread_two = found_words.clone();
+        let found_words: Arc<RwLock<Vec<Word>>> = Arc::new(RwLock::new(Vec::<Word>::default()));
+        let found_words_thread_one = found_words.clone();
+        let found_words_thread_two = found_words.clone();
 
-    //All the words from a file
-    let word_vector: Vec<String> = WORDS_FILE.lines().map(|line| line.to_string()).collect();
-    let word_vector_size = word_vector.len();
+        //All the words from a file
+        let word_vector: Vec<String> = WORDS_FILE.lines().map(|line| line.to_string()).collect();
+        let word_vector_size = word_vector.len();
 
-    let (chan_sender, chan_receiver): (Sender<bool>, Receiver<bool>) = std::sync::mpsc::channel();
-    let chan_sender_key_listener = chan_sender.clone();
+        let (chan_sender, chan_receiver): (Sender<bool>, Receiver<bool>) =
+            std::sync::mpsc::channel();
+        let chan_sender_key_listener = chan_sender.clone();
 
-    thread::spawn(move || {
-        key_listener(options_thread_one, chan_sender_key_listener);
-    });
-    thread::spawn(move || {
-        creat_all_windows(
-            options_thread_two,
-            word_vector_size,
-            found_words_thread_one,
-            chan_receiver,
-        );
-    });
+        thread::spawn(move || {
+            key_listener(options_thread_one, chan_sender_key_listener);
+        });
 
-    //go find words
-    get_words_by_chance(options, word_vector, found_words_thread_two, chan_sender);
+        thread::spawn(move || {
+            creat_all_windows(
+                options_thread_two,
+                word_vector_size,
+                found_words_thread_one,
+                chan_receiver,
+            );
+        });
+
+        //go find words
+        get_words_by_chance(options, word_vector, found_words_thread_two, chan_sender);
+    }
 }
 
 fn creat_all_windows(
@@ -177,14 +179,8 @@ fn create_options_window(word_vector_size: usize) {
         pos_option,
         &format!("Use the characters below to change speed and chance to find words"),
     );
-    pos_option += 1;
-    print_at_pos(
-        writing_position.column,
-        pos_option,
-        &format!("Do not hold the keys down for too long! (It spams key events)"),
-    );
-
     pos_option += 2;
+
     let mut use_empty_row = false;
 
     for option in create_options_array().iter() {
@@ -319,80 +315,74 @@ fn print_found_words(found_words: &Vec<Word>) {
 }
 
 fn key_listener(options: Arc<RwLock<Options>>, chan_sender: Sender<bool>) {
-    // make sure to enable raw mode, this will make sure key events won't be handled by the terminal it's self
-    // and allows crossterm to read the input and pass it back to you.
-    if let Ok(_raw) = terminal::enable_raw_mode() {
-        // enable mouse events to be captured.
+    let device_state = DeviceState::new();
+    let mut prev_keys = vec![];
 
-        //Enable mouse event capture or print error if it fails
-        if let Err(error_mess) = execute!(stdout(), EnableMouseCapture) {
-            println!("{}", error_mess);
-        }
+    loop {
+        // Reverse the keys. Because second key gets position 0 and the first postion 1.
+        // So this way instead of [Numpad5, LAlt] we get [LAlt, Numpad5]
+        // Easier to check if ALT is pressed
+        let keys: Vec<Keycode> = device_state.get_keys().into_iter().rev().collect();
 
-        //We dont want the input queued while keeping the keyboard char pressed down.
-        //So when we release the key, nothing should happen in the background
-        loop {
-            //get char so we can act on it
-            if let Ok(Event::Key(KeyEvent {
-                code: KeyCode::Char(c),
-                ..
-                //Not to happy about this event::read() because the key press spamming is back.
-                //We can't seem to do anything about it.
-                //I wish there was a DisableKeyboardCapture and EnableKeyboardCapture so we could
-                //temporarily disable key events
-            })) = event::read()
-            {
-                if process_input_event(&options, c) {
-                    //Cleanup if we want to quit the program
-                    cleanup_on_exit();
-                }
-
-                //Doesn't matter if we send true or false. We just need to send something.
-                //Receiver blocks till we send
-                if let Err(err_msg) = chan_sender.send(true) {
-                    println!("{}", err_msg);
+        if keys != prev_keys {
+            if let Some(keycode) = keys.get(0) {
+                match *keycode {
+                    QUIT => {
+                        cleanup_on_exit();
+                    }
+                    INCREASE_CHANCE => {
+                        increase_decrease_chance(&mut options.write().unwrap().chance_range, true);
+                    }
+                    DECREASE_CHANCE => {
+                        increase_decrease_chance(&mut options.write().unwrap().chance_range, false);
+                    }
+                    INCREASE_WORD_SLEEP => {
+                        increase_decrease_sleep(&mut options.write().unwrap().word_sleep, true);
+                    }
+                    DECREASE_WORD_SLEEP => {
+                        increase_decrease_sleep(&mut options.write().unwrap().word_sleep, false);
+                    }
+                    INCREASE_RANDOM_ONE_SLEEP => {
+                        increase_decrease_sleep(
+                            &mut options.write().unwrap().random_one_sleep,
+                            true,
+                        );
+                    }
+                    DECREASE_RANDOM_ONE_SLEEP => {
+                        increase_decrease_sleep(
+                            &mut options.write().unwrap().random_one_sleep,
+                            false,
+                        );
+                    }
+                    INCREASE_RANDOM_TWO_SLEEP => {
+                        increase_decrease_sleep(
+                            &mut options.write().unwrap().random_two_sleep,
+                            true,
+                        );
+                    }
+                    DECREASE_RANDOM_TWO_SLEEP => {
+                        increase_decrease_sleep(
+                            &mut options.write().unwrap().random_two_sleep,
+                            false,
+                        );
+                    }
+                    RESET_OPTIONS => {
+                        *options.write().unwrap() = Options::default();
+                    }
+                    //ignore the rest
+                    _ => (),
                 }
             }
-            //This stops the keypress spamming a bit
-            thread::sleep(Duration::from_millis(KEY_LISTENER_SLEEP));
         }
-    }
-}
+        //Doesn't matter if we send true or false. We just need to send something.
+        //Receiver blocks till we send
+        if let Err(err_msg) = chan_sender.send(true) {
+            println!("{}", err_msg);
+        }
 
-fn process_input_event(options: &Arc<RwLock<Options>>, key_code: char) -> bool {
-    match key_code {
-        QUIT => return EXIT_PROGRAM,
-        INCREASE_CHANCE => {
-            increase_decrease_chance(&mut options.write().unwrap().chance_range, true);
-        }
-        DECREASE_CHANCE => {
-            increase_decrease_chance(&mut options.write().unwrap().chance_range, false);
-        }
-        INCREASE_WORD_SLEEP => {
-            increase_decrease_sleep(&mut options.write().unwrap().word_sleep, true);
-        }
-        DECREASE_WORD_SLEEP => {
-            increase_decrease_sleep(&mut options.write().unwrap().word_sleep, false);
-        }
-        INCREASE_RANDOM_ONE_SLEEP => {
-            increase_decrease_sleep(&mut options.write().unwrap().random_one_sleep, true);
-        }
-        DECREASE_RANDOM_ONE_SLEEP => {
-            increase_decrease_sleep(&mut options.write().unwrap().random_one_sleep, false);
-        }
-        INCREASE_RANDOM_TWO_SLEEP => {
-            increase_decrease_sleep(&mut options.write().unwrap().random_two_sleep, true);
-        }
-        DECREASE_RANDOM_TWO_SLEEP => {
-            increase_decrease_sleep(&mut options.write().unwrap().random_two_sleep, false);
-        }
-        RESET_OPTIONS => {
-            *options.write().unwrap() = Options::default();
-        }
-        //ignore the rest
-        _ => (),
+        prev_keys = keys;
+        thread::sleep(Duration::from_millis(KEY_LISTENER_SLEEP));
     }
-    DONT_EXIT_PROGRAM
 }
 
 fn print_at_pos<T>(column: u16, row: u16, message: T)

@@ -20,5 +20,6 @@ version = "0.23.2"
 features = ["event-stream"] 
 
 [dependencies]
+device_query = "1.1.1"
 rand = "0.8.5"
 chrono = "0.4.19"
