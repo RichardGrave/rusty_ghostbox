@@ -65,6 +65,9 @@ fn main() {
     if let Err(err_mess) = execute!(stdout(), terminal::EnterAlternateScreen) {
         println!("{}", err_mess);
     }
+    if let Err(err_mess) = execute!(stdout(), cursor::Hide) {
+        println!("{}", err_mess);
+    }
 
     //At start, clear the terminal
     clear_term();
@@ -430,6 +433,10 @@ fn cleanup_on_exit() {
 
     clear_term();
 
+    if let Err(err_mess) = execute!(stdout(), cursor::Show) {
+        println!("{}", err_mess);
+    }
+    
     //Try to leave this screen and go back to the one we started this program in or print error
     if let Err(err_mess) = execute!(stdout(), terminal::LeaveAlternateScreen) {
         println!("{}", err_mess);
